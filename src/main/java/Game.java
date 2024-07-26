@@ -1,34 +1,31 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferStrategy;
+import java.awt.image.BufferedImage;
 import java.util.Random;
 
 public class Game extends Canvas {
-    private final int width = 1000;
-    private final int height = 1000;
+    private BufferedImage image = new BufferedImage(1920/2, 1080/2, BufferedImage.TYPE_INT_ARGB);
+    private BufferedImage transientImage = new BufferedImage(1920/2, 1080/2, BufferedImage.TYPE_INT_ARGB);;
+    private final int white = Color.WHITE.getRGB();
+    private final int black = Color.BLACK.getRGB();
     //private final int generations = 10000;
-    private int[][] grid;
-    private int population = 5;
+    private int population = 0;
     private int generation = 1;
 
-    private JFrame frame = new JFrame("Game of Life");
+    private final JFrame frame = new JFrame("Game of Life");
 
-    public Game() throws InterruptedException {
-        grid = new int[width/9][height/10];
-
-        // glider
-        // grid[2][0] = 1;
-        // grid[2][1] = 1;
-        // grid[2][2] = 1;
-        // grid[1][2] = 1;
-        // grid[0][1] = 1;
-
+    public Game() {
         Random random = new Random();
-        for(int x = 0; x < width/9; x++) {
-            for(int y = 0; y < height/10; y++) {
+        for(int x = 0; x < image.getWidth(); x++) {
+            for(int y = 0; y < image.getHeight(); y++) {
                 if(random.nextInt() % 2 == 0) {
-                    grid[x][y] = 1;
+                    image.setRGB(x, y, white);
+                    transientImage.setRGB(x, y, white);
                     population++;
+                }  else {
+                    image.setRGB(x, y, black);
+                    transientImage.setRGB(x, y, black);
                 }
             }
         }
@@ -39,58 +36,60 @@ public class Game extends Canvas {
             draw();
             update();
             frame.setTitle("Game of Life - Generation: " + generation + ", Population: " + population);
-            Thread.sleep(100);
+            //Thread.sleep(25); // stops everything going mad
         }
     }
 
-    private void init(Game ex) {
-        frame.getContentPane().add(ex);
-        frame.setSize((width)+20, (height)+50);
+    private void init(Game game) {
+        frame.getContentPane().add(game);
+        frame.getContentPane().setSize(image.getWidth()*2, image.getHeight()*2);
+        frame.setSize(frame.getContentPane().getSize());
         frame.setResizable(false);
         frame.setFocusable(true);
-        frame.setUndecorated(false);
+        frame.setUndecorated(true);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
         frame.requestFocus();
+        frame.pack();
     }
 
     private void update() {
-        int[][] tempGrid = new int[width/9][height/10];
-        for(int x = 0; x < tempGrid.length; x++) {
-            for(int y = 0; y < tempGrid[0].length; y++) {
+
+        for(int x = 0; x < image.getWidth(); x++) {
+            for(int y = 0; y < image.getHeight(); y++) {
                 int neighbors = 0;
 
                 // left of cell
-                if(x > 0 && grid[x-1][y] != 0) {
+                if(x > 0 && image.getRGB(x-1,y) != black) {
                     neighbors++;
                 }
                 // right of cell
-                if(x < grid.length-1 && grid[x+1][y] != 0) {
+                if(x < image.getWidth()-1 && image.getRGB(x+1,y) != black) {
                     neighbors++;
                 }
                 // top of cell
-                if(y > 0 && grid[x][y-1] != 0) {
+                if(y > 0 && image.getRGB(x,y-1) != black) {
                     neighbors++;
                 }
                 // bottom of cell
-                if(y < grid[0].length-1 && grid[x][y+1] != 0) {
+                if(y < image.getHeight()-1 && image.getRGB(x,y+1) != black) {
                     neighbors++;
                 }
                 // top left of cell
-                if(y > 0 && x > 0 && grid[x-1][y-1] != 0) {
+                if(y > 0 && x > 0 && image.getRGB(x-1,y-1) != black) {
                     neighbors++;
                 }
                 // top right of cell
-                if(x < grid.length-1 && y > 0 && grid[x+1][y-1] != 0) {
+                if(x < image.getWidth()-1 && y > 0 && image.getRGB(x+1,y-1) != black) {
                     neighbors++;
                 }
                 // bottom left of cell
-                if(x > 0 && y < grid[0].length-1 && grid[x-1][y+1] != 0) {
+                if(x > 0 && y < image.getHeight()-1 && image.getRGB(x-1,y+1) != black) {
                     neighbors++;
                 }
                 // bottom right of cell
-                if(x < grid.length-1 && y < grid[0].length-1 && grid[x+1][y+1] != 0) {
+                if(x < image.getWidth()-1 && y < image.getHeight()-1 && image.getRGB(x+1,y+1) != black) {
                     neighbors++;
                 }
 
@@ -100,45 +99,31 @@ public class Game extends Canvas {
                 //  Any live cell with more than three live neighbours dies, as if by overpopulation.
                 //  Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
 
-                if(grid[x][y] == 1 && (neighbors < 2 || neighbors > 3)) {
-                    tempGrid[x][y] = 0;
+                if(image.getRGB(x, y) == white && (neighbors < 2 || neighbors > 3)) {
+                    transientImage.setRGB(x, y, black);
                     population--;
                     continue;
                 }
-                if(grid[x][y] == 0 && neighbors == 3) {
-                    tempGrid[x][y] = 1;
+                if(image.getRGB(x,y) == black && neighbors == 3) {
+                    transientImage.setRGB(x, y, white);
                     population++;
-                } else {
-                    tempGrid[x][y] = grid[x][y];
                 }
-
             }
         }
-        grid = tempGrid; // use a temp grid to stop rules being applied in a meta-generation way (in between generations)
+        image.setData(transientImage.getData());
         generation++;
     }
 
     private void draw() {
         BufferStrategy bs = getBufferStrategy();
         if(bs == null) {
-            createBufferStrategy(3);
+            createBufferStrategy(2);
             return;
         }
 
         Graphics g = bs.getDrawGraphics();
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, width+50, height+50);
-
         Graphics2D grr = (Graphics2D) g;
-
-        for(int x = 0; x < grid.length; x++) {
-            for(int y = 0; y < grid[0].length; y++) {
-                if(grid[x][y] == 1) {
-                    grr.setColor(Color.WHITE);
-                    grr.drawString("x", 5 + (9 * x), 12 + (10 * y));
-                }
-            }
-        }
+        grr.drawImage(image.getScaledInstance(image.getWidth()*2, image.getHeight()*2, 0), null, null);
 
         g.dispose();
         bs.show();
